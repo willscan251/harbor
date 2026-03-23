@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Staff {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  email        String?
+  role         String   @default("staff") // admin | staff
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("staff")
+}
+
+model Client {
+  id                  Int       @id @default(autoincrement())
+  code                String    @unique
+  name                String
+  shortName           String?   @map("short_name")
+  primaryContactName  String?   @map("primary_contact_name")
+  primaryContactEmail String?   @map("primary_contact_email")
+  primaryContactPhone String?   @map("primary_contact_phone")
+  zoomLink            String?   @map("zoom_link")
+  meetingSchedule     String?   @map("meeting_schedule")
+  folderPath          String?   @map("folder_path")
+  zohoCustomerId      String?   @map("zoho_customer_id")
+  status              String    @default("active")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  contacts   Contact[]
+  projects   Project[]
+  meetings   Meeting[]
+  tasks      Task[]
+  documents  Document[]
+  aliases    ClientAlias[]
+  invoices   Invoice[]
+  activities ActivityLog[]
+
+  @@map("clients")
+}
+
+model ClientAlias {
+  id        Int      @id @default(autoincrement())
+  clientId  Int      @map("client_id")
+  alias     String
+  aliasType String   @default("program") @map("alias_type") // program | abbreviation | related_org | dba
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("client_aliases")
+}
+
+model Contact {
+  id        Int      @id @default(autoincrement())
+  clientId  Int      @map("client_id")
+  name      String
+  title     String?
+  email     String?
+  phone     String?
+  isPrimary Boolean  @default(false) @map("is_primary")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("contacts")
+}
+
+model Project {
+  id            Int       @id @default(autoincrement())
+  clientId      Int       @map("client_id")
+  name          String
+  description   String?
+  status        String    @default("active")
+  startDate     DateTime? @map("start_date")
+  targetEndDate DateTime? @map("target_end_date")
+  actualEndDate DateTime? @map("actual_end_date")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("projects")
+}
+
+model Meeting {
+  id            Int      @id @default(autoincrement())
+  clientId      Int      @map("client_id")
+  title         String
+  meetingDate   DateTime @map("meeting_date")
+  duration      Int?
+  zoomMeetingId String?  @map("zoom_meeting_id")
+  recordingUrl  String?  @map("recording_url")
+  transcript    String?
+  aiSummary     String?  @map("ai_summary")
+  aiActionItems String?  @map("ai_action_items")
+  processed     Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id])
+  tasks  Task[]
+
+  @@map("meetings")
+}
+
+model Task {
+  id            Int       @id @default(autoincrement())
+  clientId      Int       @map("client_id")
+  meetingId     Int?      @map("meeting_id")
+  title         String
+  description   String?
+  assignedTo    String?   @map("assigned_to")
+  dueDate       DateTime? @map("due_date")
+  priority      String    @default("medium")
+  status        String    @default("pending")
+  clientVisible Boolean   @default(true) @map("client_visible")
+  completedAt   DateTime? @map("completed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  client  Client   @relation(fields: [clientId], references: [id])
+  meeting Meeting? @relation(fields: [meetingId], references: [id])
+
+  @@map("tasks")
+}
+
+model Document {
+  id            Int      @id @default(autoincrement())
+  clientId      Int?     @map("client_id")
+  filename      String
+  displayName   String?  @map("display_name")
+  filePath      String?  @map("file_path")
+  fileType      String?  @map("file_type")
+  category      String?
+  clientVisible Boolean  @default(false) @map("client_visible")
+  uploadedBy    String?  @map("uploaded_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  client Client? @relation(fields: [clientId], references: [id])
+
+  @@map("documents")
+}
+
+model Invoice {
+  id             Int       @id @default(autoincrement())
+  clientId       Int       @map("client_id")
+  zohoInvoiceId  String?   @map("zoho_invoice_id")
+  invoiceNumber  String?   @map("invoice_number")
+  amount         Float?
+  status         String    @default("draft")
+  invoiceDate    DateTime? @map("invoice_date")
+  dueDate        DateTime? @map("due_date")
+  paidDate       DateTime? @map("paid_date")
+  zohoUrl        String?   @map("zoho_url")
+  syncedAt       DateTime? @map("synced_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("invoices")
+}
+
+model IntegrationToken {
+  id           Int      @id @default(autoincrement())
+  service      String   @unique
+  accessToken  String   @map("access_token")
+  refreshToken String?  @map("refresh_token")
+  expiresAt    String?  @map("expires_at")
+  extraData    String?  @map("extra_data")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("integration_tokens")
+}
+
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  clientId    Int?     @map("client_id")
+  action      String
+  entityType  String?  @map("entity_type")
+  entityId    Int?     @map("entity_id")
+  description String?
+  performedBy String?  @map("performed_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  client Client? @relation(fields: [clientId], references: [id])
+
+  @@map("activity_log")
+}
