@@ -1,3 +1,0 @@
-"""
-Harbor - Integrations Package
-"""
